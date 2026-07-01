@@ -18,6 +18,13 @@ phases:
       - ls -la
 
       - echo "Checking required files..."
+      - echo "ANDROID_HOME=$ANDROID_HOME"
+      - ls -la $ANDROID_HOME || true
+      - ls -la $ANDROID_HOME/platforms || true
+      - ls -la $ANDROID_HOME/build-tools || true
+      - sdkmanager --list || true
+      - sdkmanager --list_installed || true
+
 
       - |
         MASST_EXE=$(find masst -type f -name "MASSTCLI*" | head -1)
