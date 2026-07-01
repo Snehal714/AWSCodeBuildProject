@@ -1,11 +1,16 @@
 version: 0.2
 
+env:
+  variables:
+    LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
+
 phases:
   build:
     commands:
-      - pwd
-      - ls -la
-      - find .
+      - echo "Downloading MASSTCLI"
+      - curl -L -o MASSTCLI.zip "$LINUX_DOWNLOAD_URL"
+      - unzip MASSTCLI.zip -d masst
+      - ls -R masst
 
 artifacts:
   files:
