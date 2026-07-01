@@ -32,7 +32,7 @@ phases:
       - mkdir -p /opt/android-sdk/cmdline-tools
       - cd /opt/android-sdk/cmdline-tools
 
-      # FIX: Added the missing hyphen between 'commandlinetools' and 'linux'
+      # Added the missing hyphen between 'commandlinetools' and 'linux'
       - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
 
       - unzip -q cmdline-tools.zip
@@ -82,7 +82,9 @@ phases:
       - echo "Re-exporting Android paths for the Build shell environment..."
       - export ANDROID_HOME=/opt/android-sdk
       - export ANDROID_SDK_ROOT=/opt/android-sdk
-      - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+      # FIX: Added $ANDROID_HOME/build-tools/35.0.0 to the PATH string so 'd8' can be executed globally
+      - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0
 
       - echo "Creating local standard Android SDK symlink structure expected by MASST..."
       - mkdir -p $HOME/Android
