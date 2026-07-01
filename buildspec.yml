@@ -1,0 +1,107 @@
+version: 0.2
+
+env:
+  variables:
+    # Default parameters (Can be overridden when starting the CodeBuild execution)
+    IS_DEBUG: "false"
+    INPUT_FILE: "app-release.aab"
+    CONFIG_FILE: "bluebeetle_config.bm"
+    MACOS_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/MacOS/MASSTCLI-v1.1.0-darwin-arm64.zip"
+    LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
+
+    # WARNING: Adjust this path based on your target CodeBuild Ubuntu/Linux container layout
+    ANDROID_HOME: "/usr/local/android-sdk-linux"
+
+    KEYSTORE_FILE: "Bluebeetle.jks"
+    KEYSTORE_PASSWORD: "bugs@1234"
+    KEY_ALIAS: "key0"
+    KEY_PASSWORD: "bugs@1234"
+    IDENTITY: "Apple Distribution: Bugsmirror Research private limited (BPKUYCFJ74)"
+    MASST_DIR: "MASSTCLI_EXTRACTED"
+    ARTIFACTS_DIR: "output"
+    MASST_ZIP: "MASSTCLI"
+
+phases:
+  install:
+    commands:
+      - echo "Detecting platform and downloading MASST CLI..."
+      - |
+        if [ "$(uname)" = "Darwin" ]; then
+          echo "MacOS" > platform.txt
+          DOWNLOAD_URL=$MACOS_DOWNLOAD_URL
+        else
+          echo "Linux" > platform.txt
+          DOWNLOAD_URL=$LINUX_DOWNLOAD_URL
+        fi
+        echo "Platform detected: $(cat platform.txt)"
+        
+        if [ ! -f "${MASST_ZIP}.zip" ]; then
+          curl -L -o "${MASST_ZIP}.zip" "${DOWNLOAD_URL}" || wget -O "${MASST_ZIP}.zip" "${DOWNLOAD_URL}"
+        fi
+
+      - echo "Extracting toolsets..."
+      - |
+        rm -rf "${MASST_DIR}"
+        mkdir -p "${MASST_DIR}"
+        unzip -q "${MASST_ZIP}.zip" -d "${MASST_DIR}"
+        chmod +x $(find "${MASST_DIR}" -type f -name "MASSTCLI*" || true)
+        echo "Setup completed"
+
+  pre_build:
+    commands:
+      - echo "Validating input files..."
+      - [ -f "${INPUT_FILE}" ] || { echo "ERROR: ${INPUT_FILE} not found"; exit 1; }
+      - [ -f "${CONFIG_FILE}" ] || { echo "ERROR: ${CONFIG_FILE} not found"; exit 1; }
+
+     build:
+       commands:
+         - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+         - echo "PATH = $PATH"
+         - |
+           MASST_EXE=$(find "${MASST_DIR}" -type f -name "MASSTCLI*" | head -n 1)
+           if [ -z "$MASST_EXE" ]; then
+             echo "ERROR: MASST CLI not found"
+             exit 1
+           fi
+           echo "Using MASST CLI: $MASST_EXE"
+           
+           EXT=$(echo "${INPUT_FILE}" | awk -F. '{print tolower($NF)}')
+           case "$EXT" in
+             xcarchive|ipa)
+               "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" -identity="${IDENTITY}"
+               ;;
+             aab|apk)
+               if [ "${IS_DEBUG}" = "true" ]; then
+                 "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}"
+               else
+                 "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" \
+                   -keystore="${KEYSTORE_FILE}" \
+                   -storePassword=${KEYSTORE_PASSWORD} \
+                   -alias=${KEY_ALIAS} \
+                   -keyPassword=${KEY_PASSWORD} \
+                   -v=true -apk
+               fi
+               ;;
+             *)
+               echo "ERROR: Unsupported file type"
+               exit 1
+               ;;
+           esac
+           echo "Execution completed"
+
+     post_build:
+       commands:
+         - mkdir -p "${ARTIFACTS_DIR}"
+         - DETECTED_PLATFORM=$(cat platform.txt || echo "Unknown")
+         - echo "Build: ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
+         - rm -f "${MASST_ZIP}.zip"
+         - |
+           if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+             echo "${DETECTED_PLATFORM} IS_DEBUG=${IS_DEBUG} - SUCCESS"
+           else
+             echo "Failed"
+           fi
+
+       artifacts:
+         files:
+           - 'output/**/*'
