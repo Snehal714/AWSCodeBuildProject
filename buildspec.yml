@@ -34,14 +34,14 @@ phases:
           -v=true \
           -apk
 
-    post_build:
-  commands:
-    - mkdir -p output
-    - find .
-    - cp -r *.apk output/ || true
-    - cp -r *.aab output/ || true
-    - cp -r *.json output/ || true
-    - cp -r *.html output/ || true
+  post_build:
+    commands:
+      - mkdir -p output
+      - find .
+      - cp -r *.apk output/ || true
+      - cp -r *.aab output/ || true
+      - cp -r *.json output/ || true
+      - cp -r *.html output/ || true
 
 artifacts:
   files:
