@@ -121,7 +121,8 @@ phases:
     commands:
       - mkdir -p "${ARTIFACTS_DIR}"
       - DETECTED_PLATFORM=$(cat platform.txt || echo "Unknown")
-      - echo "Build: ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
+      # Fixed: Replaced the parsing-hostile colon with a hyphen
+      - echo "Build - ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
       - rm -f "${MASST_ZIP}.zip"
       - |
         if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
