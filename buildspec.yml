@@ -20,13 +20,19 @@ phases:
       - echo "Checking required files..."
 
       - |
-        for file in app-release.aab bluebeetle_config.bm Bluebeetle.jks; do
-          if [ -f "$file" ]; then
-            echo "✅ Found $file"
-          else
-            echo "❌ Missing $file"
-          fi
-        done
+        MASST_EXE=$(find masst -type f -name "MASSTCLI*" | head -1)
+
+        echo "Using: $MASST_EXE"
+
+        "$MASST_EXE" \
+          -input="app-release.aab" \
+          -config="bluebeetle_config.bm" \
+          -keystore="Bluebeetle.jks" \
+          -storePassword="bugs@1234" \
+          -alias="key0" \
+          -keyPassword="bugs@1234" \
+          -v=true \
+          -apk
 
 artifacts:
   files:
