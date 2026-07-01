@@ -1,23 +1,12 @@
 version: 0.2
 
 phases:
-  install:
-    commands:
-      - echo "Install Phase"
-
-  pre_build:
-    commands:
-      - echo "Pre Build Phase"
-
   build:
     commands:
-      - echo "Hello from CodeBuild"
-
-  post_build:
-    commands:
-      - mkdir -p output
-      - echo "Build Successful" > output/report.txt
+      - pwd
+      - ls -la
+      - find .
 
 artifacts:
   files:
-    - output/**/*
+    - '**/*'
