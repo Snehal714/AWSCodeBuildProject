@@ -50,58 +50,59 @@ phases:
   pre_build:
     commands:
       - echo "Validating input files..."
-      - [ -f "${INPUT_FILE}" ] || { echo "ERROR: ${INPUT_FILE} not found"; exit 1; }
-      - [ -f "${CONFIG_FILE}" ] || { echo "ERROR: ${CONFIG_FILE} not found"; exit 1; }
+      # Wrapped in single quotes to prevent YAML parsing errors
+      - '[ -f "${INPUT_FILE}" ] || { echo "ERROR: ${INPUT_FILE} not found"; exit 1; }'
+      - '[ -f "${CONFIG_FILE}" ] || { echo "ERROR: ${CONFIG_FILE} not found"; exit 1; }'
 
-     build:
-       commands:
-         - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-         - echo "PATH = $PATH"
-         - |
-           MASST_EXE=$(find "${MASST_DIR}" -type f -name "MASSTCLI*" | head -n 1)
-           if [ -z "$MASST_EXE" ]; then
-             echo "ERROR: MASST CLI not found"
-             exit 1
-           fi
-           echo "Using MASST CLI: $MASST_EXE"
-           
-           EXT=$(echo "${INPUT_FILE}" | awk -F. '{print tolower($NF)}')
-           case "$EXT" in
-             xcarchive|ipa)
-               "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" -identity="${IDENTITY}"
-               ;;
-             aab|apk)
-               if [ "${IS_DEBUG}" = "true" ]; then
-                 "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}"
-               else
-                 "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" \
-                   -keystore="${KEYSTORE_FILE}" \
-                   -storePassword=${KEYSTORE_PASSWORD} \
-                   -alias=${KEY_ALIAS} \
-                   -keyPassword=${KEY_PASSWORD} \
-                   -v=true -apk
-               fi
-               ;;
-             *)
-               echo "ERROR: Unsupported file type"
-               exit 1
-               ;;
-           esac
-           echo "Execution completed"
+  build:
+    commands:
+      - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+      - echo "PATH = $PATH"
+      - |
+        MASST_EXE=$(find "${MASST_DIR}" -type f -name "MASSTCLI*" | head -n 1)
+        if [ -z "$MASST_EXE" ]; then
+          echo "ERROR: MASST CLI not found"
+          exit 1
+        fi
+        echo "Using MASST CLI: $MASST_EXE"
+        
+        EXT=$(echo "${INPUT_FILE}" | awk -F. '{print tolower($NF)}')
+        case "$EXT" in
+          xcarchive|ipa)
+            "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" -identity="${IDENTITY}"
+            ;;
+          aab|apk)
+            if [ "${IS_DEBUG}" = "true" ]; then
+              "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}"
+            else
+              "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" \
+                -keystore="${KEYSTORE_FILE}" \
+                -storePassword=${KEYSTORE_PASSWORD} \
+                -alias=${KEY_ALIAS} \
+                -keyPassword=${KEY_PASSWORD} \
+                -v=true -apk
+            fi
+            ;;
+          *)
+            echo "ERROR: Unsupported file type"
+            exit 1
+            ;;
+        esac
+        echo "Execution completed"
 
-     post_build:
-       commands:
-         - mkdir -p "${ARTIFACTS_DIR}"
-         - DETECTED_PLATFORM=$(cat platform.txt || echo "Unknown")
-         - echo "Build: ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
-         - rm -f "${MASST_ZIP}.zip"
-         - |
-           if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
-             echo "${DETECTED_PLATFORM} IS_DEBUG=${IS_DEBUG} - SUCCESS"
-           else
-             echo "Failed"
-           fi
+  post_build:
+    commands:
+      - mkdir -p "${ARTIFACTS_DIR}"
+      - DETECTED_PLATFORM=$(cat platform.txt || echo "Unknown")
+      - echo "Build: ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
+      - rm -f "${MASST_ZIP}.zip"
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+          echo "${DETECTED_PLATFORM} IS_DEBUG=${IS_DEBUG} - SUCCESS"
+        else
+          echo "Failed"
+        fi
 
-       artifacts:
-         files:
-           - 'output/**/*'
+artifacts:
+  files:
+    - 'output/**/*'
