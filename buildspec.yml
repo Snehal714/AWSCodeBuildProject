@@ -5,6 +5,17 @@ env:
     LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
 
 phases:
+  pre_build:
+    commands:
+      - export ANDROID_HOME=/opt/android-sdk
+      - export ANDROID_SDK_ROOT=$ANDROID_HOME
+      - export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+      - export PATH=$PATH:$ANDROID_HOME/platform-tools
+      - export PATH=$PATH:$ANDROID_HOME/build-tools/36.0.0
+
+      - yes | sdkmanager "platform-tools"
+      - yes | sdkmanager "platforms;android-36"
+      - yes | sdkmanager "build-tools;36.0.0"
   build:
     commands:
       - echo "Downloading MASSTCLI..."
