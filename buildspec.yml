@@ -5,23 +5,99 @@ env:
     LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
 
 phases:
-  pre_build:
+  install:
     commands:
-      - apt-get update || yum update -y
-      - curl -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
-      - mkdir -p /opt/android-sdk/cmdline-tools
-      - unzip -q cmdline-tools.zip -d /opt/android-sdk/cmdline-tools
-      - mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
+      - echo "================ INSTALL PHASE STARTED ================"
+
+      # Save current directory
+      - export DIR=$PWD
+
+      # Install required packages
+      - yum update -y
+      - yum install -y java-17-amazon-corretto-headless unzip wget curl tar gzip
+
+      # Java Setup
+      - export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+      - export PATH=$JAVA_HOME/bin:$PATH
+
+      - java -version
+      - echo "JAVA_HOME=$JAVA_HOME"
+
+      # ======================================================
+      # Android SDK Setup
+      # ======================================================
 
       - export ANDROID_HOME=/opt/android-sdk
       - export ANDROID_SDK_ROOT=$ANDROID_HOME
-      - export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-      - export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+      - mkdir -p $ANDROID_HOME/cmdline-tools
+
+      - cd /tmp
+
+      - echo "Downloading Android Command Line Tools..."
+
+      - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+
+      - unzip -q cmdline-tools.zip
+
+      - mkdir -p $ANDROID_HOME/cmdline-tools/latest
+
+      - mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+
+      - rm -rf cmdline-tools
+      - rm -f cmdline-tools.zip
+
+      - export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+      - echo "Checking sdkmanager..."
+      - which sdkmanager
+      - sdkmanager --version
 
       - yes | sdkmanager --licenses
-      - yes | sdkmanager "platform-tools"
-      - yes | sdkmanager "platforms;android-36"
-      - yes | sdkmanager "build-tools;36.0.0"
+
+      - sdkmanager "platform-tools"
+      - sdkmanager "platforms;android-36"
+      - sdkmanager "build-tools;36.0.0"
+      - sdkmanager "ndk;27.0.12077973"
+
+      - echo "Installed SDK Packages:"
+      - sdkmanager --list_installed
+
+      - ls -la $ANDROID_HOME/platforms
+      - ls -la $ANDROID_HOME/build-tools
+
+      - cd $DIR
+
+      # ======================================================
+      # Download MASST CLI
+      # ======================================================
+
+      - echo "Downloading MASST CLI..."
+
+      - curl -L -o ${MASST_ZIP}.zip ${LINUX_DOWNLOAD_URL}
+
+      - rm -rf ${MASST_DIR}
+      - rm -rf temp_extract
+
+      - mkdir temp_extract
+
+      - unzip -q ${MASST_ZIP}.zip -d temp_extract
+
+      - INNER_DIR=$(find temp_extract -mindepth 1 -maxdepth 1 -type d | head -1)
+
+      - |
+        if [ -n "$INNER_DIR" ]; then
+          mv "$INNER_DIR" "${MASST_DIR}"
+        else
+          mkdir -p "${MASST_DIR}"
+          mv temp_extract/* "${MASST_DIR}/"
+        fi
+
+      - chmod +x $(find ${MASST_DIR} -type f -name "MASSTCLI*" | head -1)
+
+      - echo "MASST CLI READY"
+
+      - echo "================ INSTALL PHASE COMPLETED ================"
   build:
     commands:
       - echo "Downloading MASSTCLI..."
