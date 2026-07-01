@@ -2,147 +2,134 @@ version: 0.2
 
 env:
   variables:
+    # Default parameters (Can be overridden when starting the CodeBuild execution)
+    IS_DEBUG: "false"
+    INPUT_FILE: "app-release.aab"
+    CONFIG_FILE: "bluebeetle_config.bm"
+    MACOS_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/MacOS/MASSTCLI-v1.1.0-darwin-arm64.zip"
     LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
+
+    # Set up a clean, standard location for the Android SDK
+    ANDROID_HOME: "/opt/android-sdk"
+    ANDROID_SDK_ROOT: "/opt/android-sdk"
+
+    KEYSTORE_FILE: "Bluebeetle.jks"
+    KEYSTORE_PASSWORD: "bugs@1234"
+    KEY_ALIAS: "key0"
+    KEY_PASSWORD: "bugs@1234"
+    IDENTITY: "Apple Distribution: Bugsmirror Research private limited (BPKUYCFJ74)"
+    MASST_DIR: "MASSTCLI_EXTRACTED"
+    ARTIFACTS_DIR: "output"
+    MASST_ZIP: "MASSTCLI"
 
 phases:
   install:
     commands:
-      - echo "================ INSTALL PHASE STARTED ================"
+      - echo "Installing Java 17 and system dependencies..."
+      - apt-get update && apt-get install -y openjdk-17-jdk unzip wget curl lib32stdc++6 lib32z1
 
-      # Save current directory
-      - export DIR=$PWD
-
-      # Install required packages
-      - yum update -y
-      - yum install -y java-17-amazon-corretto-headless unzip wget curl tar gzip
-
-      # Java Setup
-      - export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
-      - export PATH=$JAVA_HOME/bin:$PATH
-
-      - java -version
-      - echo "JAVA_HOME=$JAVA_HOME"
-
-      # ======================================================
-      # Android SDK Setup
-      # ======================================================
-
-      - export ANDROID_HOME=/opt/android-sdk
-      - export ANDROID_SDK_ROOT=$ANDROID_HOME
-
-      - mkdir -p $ANDROID_HOME/cmdline-tools
-
-      - cd /tmp
-
-      - echo "Downloading Android Command Line Tools..."
-
-      - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
-
+      - echo "Downloading and configuring Android SDK Command Line Tools..."
+      - mkdir -p /opt/android-sdk/cmdline-tools
+      - cd /opt/android-sdk/cmdline-tools
+      - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetoolslinux-11076708_latest.zip
       - unzip -q cmdline-tools.zip
-
-      - mkdir -p $ANDROID_HOME/cmdline-tools/latest
-
-      - mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
-
-      - rm -rf cmdline-tools
+      # Fixes the "Could not determine SDK root" error by setting up the expected structure
+      - mv cmdline-tools latest
       - rm -f cmdline-tools.zip
 
-      - export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+      - echo "Installing Android SDK Platform Tools, Build Tools, and API 36..."
+      - export PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:$PATH
+      - yes | sdkmanager --licenses || true
+      - sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
 
-      - echo "Checking sdkmanager..."
-      - which sdkmanager
-      - sdkmanager --version
+      # Return to the CodeBuild workspace root directory
+      - cd $CODEBUILD_SRC_DIR
 
-      - yes | sdkmanager --licenses
-
-      - sdkmanager "platform-tools"
-      - sdkmanager "platforms;android-36"
-      - sdkmanager "build-tools;36.0.0"
-      - sdkmanager "ndk;27.0.12077973"
-
-      - echo "Installed SDK Packages:"
-      - sdkmanager --list_installed
-
-      - ls -la $ANDROID_HOME/platforms
-      - ls -la $ANDROID_HOME/build-tools
-
-      - cd $DIR
-
-      # ======================================================
-      # Download MASST CLI
-      # ======================================================
-
-      - echo "Downloading MASST CLI..."
-
-      - curl -L -o ${MASST_ZIP}.zip ${LINUX_DOWNLOAD_URL}
-
-      - rm -rf ${MASST_DIR}
-      - rm -rf temp_extract
-
-      - mkdir temp_extract
-
-      - unzip -q ${MASST_ZIP}.zip -d temp_extract
-
-      - INNER_DIR=$(find temp_extract -mindepth 1 -maxdepth 1 -type d | head -1)
-
+      - echo "Detecting platform and downloading MASST CLI..."
       - |
-        if [ -n "$INNER_DIR" ]; then
-          mv "$INNER_DIR" "${MASST_DIR}"
+        if [ "$(uname)" = "Darwin" ]; then
+          echo "MacOS" > platform.txt
+          DOWNLOAD_URL=$MACOS_DOWNLOAD_URL
         else
-          mkdir -p "${MASST_DIR}"
-          mv temp_extract/* "${MASST_DIR}/"
+          echo "Linux" > platform.txt
+          DOWNLOAD_URL=$LINUX_DOWNLOAD_URL
+        fi
+        echo "Platform detected: $(cat platform.txt)"
+        
+        if [ ! -f "${MASST_ZIP}.zip" ]; then
+          curl -L -o "${MASST_ZIP}.zip" "${DOWNLOAD_URL}" || wget -O "${MASST_ZIP}.zip" "${DOWNLOAD_URL}"
         fi
 
-      - chmod +x $(find ${MASST_DIR} -type f -name "MASSTCLI*" | head -1)
+      - echo "Extracting toolsets..."
+      - |
+        rm -rf "${MASST_DIR}"
+        mkdir -p "${MASST_DIR}"
+        unzip -q "${MASST_ZIP}.zip" -d "${MASST_DIR}"
+        chmod +x $(find "${MASST_DIR}" -type f -name "MASSTCLI*" || true)
+        echo "Setup completed"
 
-      - echo "MASST CLI READY"
+  pre_build:
+    commands:
+      - echo "Validating input files..."
+      - '[ -f "${INPUT_FILE}" ] || { echo "ERROR: ${INPUT_FILE} not found"; exit 1; }'
+      - '[ -f "${CONFIG_FILE}" ] || { echo "ERROR: ${CONFIG_FILE} not found"; exit 1; }'
 
-      - echo "================ INSTALL PHASE COMPLETED ================"
-#  build:
-#    commands:
-#      - echo "Downloading MASSTCLI..."
-#      - curl -L -o MASSTCLI.zip "$LINUX_DOWNLOAD_URL"
-#
-#      - unzip -q MASSTCLI.zip -d masst
-#
-#      - chmod +x $(find masst -type f -name "MASSTCLI*" | head -1)
-#
-#      - echo "Repository contents:"
-#      - ls -la
-#
-#      - echo "Checking required files..."
-#      - echo "ANDROID_HOME=$ANDROID_HOME"
-#      - ls -la $ANDROID_HOME || true
-#      - ls -la $ANDROID_HOME/platforms || true
-#      - ls -la $ANDROID_HOME/build-tools || true
-#      - sdkmanager --list || true
-#      - sdkmanager --list_installed || true
-#
-#
-#      - |
-#        MASST_EXE=$(find masst -type f -name "MASSTCLI*" | head -1)
-#
-#        echo "Using: $MASST_EXE"
-#
-#        "$MASST_EXE" \
-#          -input="app-release.aab" \
-#          -config="bluebeetle_config.bm" \
-#          -keystore="Bluebeetle.jks" \
-#          -storePassword="bugs@1234" \
-#          -alias="key0" \
-#          -keyPassword="bugs@1234" \
-#          -v=true \
-#          -apk
-#
-#  post_build:
-#    commands:
-#      - mkdir -p output
-#      - find .
-#      - cp -r *.apk output/ || true
-#      - cp -r *.aab output/ || true
-#      - cp -r *.json output/ || true
-#      - cp -r *.html output/ || true
-#
-#artifacts:
-#  files:
-#    - '**/*'
+  build:
+    commands:
+      - echo "Re-exporting Android paths for the Build shell environment..."
+      - export ANDROID_HOME=/opt/android-sdk
+      - export ANDROID_SDK_ROOT=/opt/android-sdk
+      - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+      - echo "Creating local standard Android SDK symlink structure expected by MASST..."
+      - mkdir -p $HOME/Android
+      - ln -sfn /opt/android-sdk $HOME/Android/Sdk
+
+      - |
+        MASST_EXE=$(find "${MASST_DIR}" -type f -name "MASSTCLI*" | head -n 1)
+        if [ -z "$MASST_EXE" ]; then
+          echo "ERROR: MASST CLI not found"
+          exit 1
+        fi
+        echo "Using MASST CLI: $MASST_EXE"
+        
+        EXT=$(echo "${INPUT_FILE}" | awk -F. '{print tolower($NF)}')
+        case "$EXT" in
+          xcarchive|ipa)
+            "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" -identity="${IDENTITY}"
+            ;;
+          aab|apk)
+            if [ "${IS_DEBUG}" = "true" ]; then
+              "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}"
+            else
+              "$MASST_EXE" -input="${INPUT_FILE}" -config="${CONFIG_FILE}" \
+                -keystore="${KEYSTORE_FILE}" \
+                -storePassword=${KEYSTORE_PASSWORD} \
+                -alias=${KEY_ALIAS} \
+                -keyPassword=${KEY_PASSWORD} \
+                -v=true -apk
+            fi
+            ;;
+          *)
+            echo "ERROR: Unsupported file type"
+            exit 1
+            ;;
+        esac
+        echo "Execution completed"
+
+  post_build:
+    commands:
+      - mkdir -p "${ARTIFACTS_DIR}"
+      - DETECTED_PLATFORM=$(cat platform.txt || echo "Unknown")
+      - echo "Build: ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
+      - rm -f "${MASST_ZIP}.zip"
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+          echo "${DETECTED_PLATFORM} IS_DEBUG=${IS_DEBUG} - SUCCESS"
+        else
+          echo "Failed"
+        fi
+
+artifacts:
+  files:
+    - 'output/**/*'
