@@ -7,10 +7,20 @@ env:
 phases:
   build:
     commands:
-      - echo "Downloading MASSTCLI"
+      - echo "Downloading MASSTCLI..."
       - curl -L -o MASSTCLI.zip "$LINUX_DOWNLOAD_URL"
-      - unzip MASSTCLI.zip -d masst
-      - ls -R masst
+
+      - echo "Extracting..."
+      - unzip -q MASSTCLI.zip -d masst
+
+      - echo "Files extracted:"
+      - find masst
+
+      - echo "Giving execute permission..."
+      - chmod +x $(find masst -type f -name "MASSTCLI*" | head -1)
+
+      - echo "Permissions:"
+      - ls -l $(find masst -type f -name "MASSTCLI*" | head -1)
 
 artifacts:
   files:
