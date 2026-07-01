@@ -31,7 +31,10 @@ phases:
       - echo "Downloading and configuring Android SDK Command Line Tools..."
       - mkdir -p /opt/android-sdk/cmdline-tools
       - cd /opt/android-sdk/cmdline-tools
-      - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetoolslinux-11076708_latest.zip
+
+      # FIX: Added the missing hyphen between 'commandlinetools' and 'linux'
+      - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+
       - unzip -q cmdline-tools.zip
       # Fixes the "Could not determine SDK root" error by setting up the expected structure
       - mv cmdline-tools latest
@@ -121,7 +124,6 @@ phases:
     commands:
       - mkdir -p "${ARTIFACTS_DIR}"
       - DETECTED_PLATFORM=$(cat platform.txt || echo "Unknown")
-      # Fixed: Replaced the parsing-hostile colon with a hyphen
       - echo "Build - ${DETECTED_PLATFORM} | IS_DEBUG=${IS_DEBUG} | $(date)" > "${ARTIFACTS_DIR}/report.txt"
       - rm -f "${MASST_ZIP}.zip"
       - |
