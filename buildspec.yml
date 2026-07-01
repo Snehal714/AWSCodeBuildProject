@@ -10,17 +10,23 @@ phases:
       - echo "Downloading MASSTCLI..."
       - curl -L -o MASSTCLI.zip "$LINUX_DOWNLOAD_URL"
 
-      - echo "Extracting..."
       - unzip -q MASSTCLI.zip -d masst
 
-      - echo "Files extracted:"
-      - find masst
-
-      - echo "Giving execute permission..."
       - chmod +x $(find masst -type f -name "MASSTCLI*" | head -1)
 
-      - echo "Permissions:"
-      - ls -l $(find masst -type f -name "MASSTCLI*" | head -1)
+      - echo "Repository contents:"
+      - ls -la
+
+      - echo "Checking required files..."
+
+      - |
+        for file in app-release.aab bluebeetle_config.bm Bluebeetle.jks; do
+          if [ -f "$file" ]; then
+            echo "✅ Found $file"
+          else
+            echo "❌ Missing $file"
+          fi
+        done
 
 artifacts:
   files:
