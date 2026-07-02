@@ -138,3 +138,7 @@ phases:
 artifacts:
   files:
     - 'output/**/*'
+cache:
+  paths:
+    - '/opt/android-sdk/**/*'
+    - '$HOME/.android/**/*'
