@@ -28,24 +28,29 @@ phases:
       - echo "Installing Java 17 and system dependencies..."
       - apt-get update && apt-get install -y openjdk-17-jdk unzip wget curl lib32stdc++6 lib32z1
 
-      - echo "Downloading and configuring Android SDK Command Line Tools..."
-      - mkdir -p /opt/android-sdk/cmdline-tools
-      - cd /opt/android-sdk/cmdline-tools
+      - echo "Checking if Android SDK is already restored from cache..."
+      - |
+        if [ ! -d "/opt/android-sdk/platform-tools" ]; then
+          echo "Cache miss! Downloading and configuring Android SDK Command Line Tools..."
+          mkdir -p /opt/android-sdk/cmdline-tools
+          cd /opt/android-sdk/cmdline-tools
 
-      # Added the missing hyphen between 'commandlinetools' and 'linux'
-      - curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          curl -L -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q cmdline-tools.zip
+        
+          # Fixes the "Could not determine SDK root" error by setting up the expected structure
+          mv cmdline-tools latest
+          rm -f cmdline-tools.zip
 
-      - unzip -q cmdline-tools.zip
-      # Fixes the "Could not determine SDK root" error by setting up the expected structure
-      - mv cmdline-tools latest
-      - rm -f cmdline-tools.zip
+          echo "Installing Android SDK Platform Tools, Build Tools, and API 36..."
+          export PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:$PATH
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+        else
+          echo "Cache HIT! Android SDK already exists. Skipping download steps."
+        fi
 
-      - echo "Installing Android SDK Platform Tools, Build Tools, and API 36..."
-      - export PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:$PATH
-      - yes | sdkmanager --licenses || true
-      - sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
-
-      # Return to the CodeBuild workspace root directory
+      # Always return to the CodeBuild workspace root directory
       - cd $CODEBUILD_SRC_DIR
 
       - echo "Detecting platform and downloading MASST CLI..."
@@ -83,7 +88,7 @@ phases:
       - export ANDROID_HOME=/opt/android-sdk
       - export ANDROID_SDK_ROOT=/opt/android-sdk
 
-      # FIX: Added $ANDROID_HOME/build-tools/35.0.0 to the PATH string so 'd8' can be executed globally
+      # Added $ANDROID_HOME/build-tools/35.0.0 to the PATH string so 'd8' can be executed globally
       - export PATH=/bin:/usr/bin:/usr/local/bin:$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/35.0.0
 
       - echo "Creating local standard Android SDK symlink structure expected by MASST..."
