@@ -5,7 +5,7 @@ env:
     # Default parameters (Can be overridden when starting the CodeBuild execution)
     IS_DEBUG: "false"
     INPUT_FILE: "app-release.aab"
-    CONFIG_FILE: "config_bluebeetle.bm"
+    CONFIG_FILE: "config_bluebettle.bm"
     MACOS_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/MacOS/MASSTCLI-v1.1.0-darwin-arm64.zip"
     LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
 
