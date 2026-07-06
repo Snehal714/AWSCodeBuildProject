@@ -4,8 +4,8 @@ env:
   variables:
     # Default parameters (Can be overridden when starting the CodeBuild execution)
     IS_DEBUG: "false"
-    INPUT_FILE: "daisy.aab"
-    CONFIG_FILE: "masst-config.bm"
+    INPUT_FILE: "app-release.aab"
+    CONFIG_FILE: "config_bluebeetle.bm"
     MACOS_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/MacOS/MASSTCLI-v1.1.0-darwin-arm64.zip"
     LINUX_DOWNLOAD_URL: "https://storage.googleapis.com/masst-assets/Defender-Binary-Integrator/1.0.0/Linux/MASSTCLI-v1.1.0-linux-amd64.zip"
 
@@ -13,10 +13,10 @@ env:
     ANDROID_HOME: "/opt/android-sdk"
     ANDROID_SDK_ROOT: "/opt/android-sdk"
 
-    KEYSTORE_FILE: "daisy.jks"
-    KEYSTORE_PASSWORD: "MsWheeler@2904"
+    KEYSTORE_FILE: "Bluebeetle.jks"
+    KEYSTORE_PASSWORD: "bugs@1234"
     KEY_ALIAS: "key0"
-    KEY_PASSWORD: "MsWheeler@2904"
+    KEY_PASSWORD: "bugs@1234"
     IDENTITY: "Apple Distribution: Bugsmirror Research private limited (BPKUYCFJ74)"
     MASST_DIR: "MASSTCLI_EXTRACTED"
     ARTIFACTS_DIR: "output"
