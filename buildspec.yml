@@ -45,7 +45,7 @@ phases:
           echo "Installing Android SDK Platform Tools, Build Tools, and API 36..."
           export PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:$PATH
           yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0"        
         else
           echo "Cache HIT! Android SDK already exists. Skipping download steps."
         fi
